@@ -3,14 +3,13 @@ import { RecintosZoo } from "./recintos-zoo.js";
 describe('Recintos do Zoologico', () => {
 
     test('Deve rejeitar animal inválido', () => {
-            const resultado = new RecintosZoo().analisaRecintos('UNICORNIO', 1);            
+            const resultado = new RecintosZoo().analisaRecintos('UNICORNIO', 1);
             expect(resultado.erro).toBe("Animal inválido");
             expect(resultado.recintosViaveis).toBeFalsy();
         });
 
     test('Deve rejeitar quantidade inválida', () => {
             const resultado = new RecintosZoo().analisaRecintos('MACACO', 0);
-            console.log(resultado)
             expect(resultado.erro).toBe("Quantidade inválida");
             expect(resultado.recintosViaveis).toBeFalsy();
     });

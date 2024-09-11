@@ -8,12 +8,12 @@ class RecintosZoo {
     ]);
 
     #animalInfo = new Map([
-        ['LEAO', { size: 3, habitats: ['savana', 'savana_2','savana_e_rio'] }],
-        ['LEOPARDO', { size: 2, habitats: ['savana', 'savana_2','savana_e_rio'] }],
+        ['LEAO', { size: 3, habitats: ['savana', 'savana_e_rio',  'savana_2'] }],
+        ['LEOPARDO', { size: 2, habitats: ['savana', 'savana_e_rio', 'savana_2'] }],
         ['CROCODILO', { size: 3, habitats: ['rio'] }],
-        ['MACACO', { size: 1, habitats: ['savana', 'savana_2', 'floresta', 'savana_e_rio'] }],
-        ['GAZELA', { size: 2, habitats: ['savana', 'savana_2', 'savana_e_rio'] }],
-        ['HIPOPOTAMO', { size: 4, habitats: ['savana', 'savana_2', 'rio', 'savana_e_rio'] }]
+        ['MACACO', { size: 1, habitats: ['savana', 'floresta', 'savana_e_rio', 'savana_2'] }],
+        ['GAZELA', { size: 2, habitats: ['savana', 'savana_e_rio', 'savana_2'] }],
+        ['HIPOPOTAMO', { size: 4, habitats: ['savana', 'savana_e_rio', 'rio', 'savana_2'] }]
     ]);
 
     #carnivores = ['LEAO', 'LEOPARDO', 'CROCODILO'];
@@ -34,179 +34,119 @@ class RecintosZoo {
     }
 
 
-    #monkeyRule(animal, quantidade) {
+    #_analisarRecinto(animal, quantidade, rules) {
+        const result = { recintosViaveis: [] };
+        const currentAnimal = this.#animalInfo.get(animal);
 
-        const result = {
-            recintosViaveis: []
-        }
+        currentAnimal.habitats.forEach((habitat) => {
+            const currentHabitat = this.#recints.get(habitat);
+            const needSize = currentAnimal.size * quantidade;
 
-        const currentAnimal = this.#animalInfo.get(animal)
-        
-        currentAnimal.habitats.forEach(habitat => {
-            const currentHabitat = this.#recints.get(habitat)
+            let totalAnimals =
+                currentHabitat.belongs.size === 0 ||
+                    (currentHabitat.belongs.size === 1 &&
+                        currentHabitat.belongs.has(animal))
+                    ? 0
+                    : 1;
 
-            const needSize = currentAnimal.size * quantidade
-
-            let totalAnimals = currentHabitat.belongs.size === 0 || (currentHabitat.belongs.size === 1 && currentHabitat.belongs.has(animal)) ? 0 : 1;
-                      
             for (const qtd of currentHabitat.belongs.values()) {
-                totalAnimals += qtd
+                totalAnimals += qtd;
             }
             
-            if ((totalAnimals + quantidade) <= 1 || (needSize + totalAnimals) > currentHabitat.size) {
-                return
+            if (!rules(currentHabitat, animal, quantidade, totalAnimals, needSize)) {
+                return;
             }
- 
+
+            result.recintosViaveis.push(
+                `${currentHabitat.label} (espaço livre: ${currentHabitat.size - totalAnimals - needSize
+                } total: ${currentHabitat.size})`
+            );
+        });
+
+        if (result.recintosViaveis.length === 0) {
+            return { erro: 'Não há recinto viável' };
+        }
+                
+        return result;
+    }
+
+    #monkeyRule(animal, quantidade) {
+        return this.#_analisarRecinto(animal, quantidade,(currentHabitat, animal, quantidade, totalAnimals, needSize) => {
+            if (!(totalAnimals + quantidade) > 1 || (needSize + totalAnimals) > currentHabitat.size) {
+                return false;
+            }
+
             for (const key of currentHabitat.belongs.keys()) {
                 if (this.#carnivores.includes(key)) {
-                    return
+                    return false;
                 }
             }
 
             for (const key of currentHabitat.belongs.keys()) {
                 if (this.#isHippo(key) && !currentHabitat.isExtra) {
-                    return
+                    return false;
                 }
             }
 
-            if (needSize + totalAnimals > currentHabitat.size) {
-                return
-            }
-
-         
-            result.recintosViaveis.push(`${currentHabitat.label} (espaço livre: ${currentHabitat.size - totalAnimals - needSize} total: ${currentHabitat.size})`)
-        })
-        if (result.recintosViaveis.length === 0) {            
-            return {erro : 'Não há recinto viável'}
-        }
-        
-        return result
+            return true;
+        });
     }
 
     #othersRule(animal, quantidade) {
-
-        const result = {
-            recintosViaveis: []
-        }
-
-        const currentAnimal = this.#animalInfo.get(animal)
-        currentAnimal.habitats.forEach(habitat => {
-            const currentHabitat = this.#recints.get(habitat)
-
-            const needSize = currentAnimal.size * quantidade
-
-            let totalAnimals = currentHabitat.belongs.size === 0 || (currentHabitat.belongs.size === 1 && currentHabitat.belongs.has(animal)) ? 0 : 1;
-
-            for (const qtd of currentHabitat.belongs.values()) {
-                totalAnimals += qtd
-            }
-
-            if ((needSize + totalAnimals) > currentHabitat.size) {
-                return
+        return this.#_analisarRecinto(animal, quantidade, (currentHabitat, animal, quantidade, totalAnimals, needSize) => {
+            if (needSize + totalAnimals > currentHabitat.size) {
+                return false;
             }
 
             for (const key of currentHabitat.belongs.keys()) {
                 if (this.#carnivores.includes(key)) {
-                    return
+                    return false;
                 }
             }
 
             for (const key of currentHabitat.belongs.keys()) {
                 if (this.#isHippo(key) && !currentHabitat.isExtra) {
-                    return
+                    return false;
                 }
             }
 
-            if (needSize + totalAnimals > currentHabitat.size) {
-                return
-            }
-
-            result.recintosViaveis.push(`${currentHabitat.label} (espaço livre: ${currentHabitat.size - totalAnimals - needSize} total: ${currentHabitat.size})`)
-        })
-
-        if (result.recintosViaveis.length === 0) {
-            return {erro : 'Não há recinto viável'}
-        }
-
-        return result
+            return true;
+        });
     }
 
     #hippoRule(animal, quantidade) {
+        return this.#_analisarRecinto(animal, quantidade, (currentHabitat, animal, quantidade, totalAnimals, needSize) => {
 
-        const result = {
-            recintosViaveis: []
-        }
-
-        const currentAnimal = this.#animalInfo.get(animal)
-        currentAnimal.habitats.forEach(habitat => {
-            const currentHabitat = this.#recints.get(habitat)
-
-            const needSize = currentAnimal.size * quantidade
-
-            let totalAnimals = currentHabitat.belongs.size === 0 || (currentHabitat.belongs.size === 1 && currentHabitat.belongs.has(animal)) ? 0 : 1;
-
-            for (const qtd of currentHabitat.belongs.values()) {
-                totalAnimals += qtd
-            }
-
-            if ((totalAnimals + quantidade) > 1 || (needSize + totalAnimals) > currentHabitat.size) {
-                return
+            if ((needSize + totalAnimals) > currentHabitat.size) {
+                return false;
             }
 
             for (const key of currentHabitat.belongs.keys()) {
                 if (this.#carnivores.includes(key)) {
-                    return
+                    return false;
+                }
+            }
+            for (const key of currentHabitat.belongs.keys()) {                
+                if (!this.#isHippo(key) && !(currentHabitat.isExtra)) {
+                    return false;
                 }
             }
 
-            for (const key of currentHabitat.belongs.keys()) {
-                if (!this.#isHippo(key) && !currentHabitat.isExtra) {
-                    return
-                }
-            }
-
-            if (needSize + totalAnimals > currentHabitat.size) {
-                return
-            }
-
-            result.recintosViaveis.push(`${currentHabitat.label} (espaço livre: ${currentHabitat.size - totalAnimals - needSize} total: ${currentHabitat.size})`)
-        })
-
-        if (result.recintosViaveis.length === 0) {
-            return {erro : 'Não há recinto viável'}
-        }
-
-        return result
+            return true;
+        });
     }
 
     #carnivoresRule(animal, quantidade) {
-        const result = {
-            recintosViaveis: []
-        }
-
-        const currentAnimal = this.#animalInfo.get(animal)
-        currentAnimal.habitats.forEach(habitat => {
-            const currentHabitat = this.#recints.get(habitat)
-
-            const needSize = currentAnimal.size * quantidade
-
-            let totalAnimals = currentHabitat.belongs.size === 0 || (currentHabitat.belongs.size === 1 && currentHabitat.belongs.has(animal)) ? 0 : 1;
-
-            for (const qtd of currentHabitat.belongs.values()) {
-                totalAnimals += qtd
-            }            
-
-            if (currentHabitat.belongs.size >1 || (currentHabitat.belongs.size === 1 && !currentHabitat.belongs.has(animal)) || needSize + totalAnimals > currentHabitat.size) {
-                return
+        return this.#_analisarRecinto(animal, quantidade, (currentHabitat, animal, quantidade, totalAnimals, needSize) => {
+            if (
+                currentHabitat.belongs.size > 1 ||
+                (currentHabitat.belongs.size === 1 && !currentHabitat.belongs.has(animal)) ||
+                needSize + totalAnimals > currentHabitat.size
+            ) {
+                return false;
             }
-            result.recintosViaveis.push(`${currentHabitat.label} (espaço livre: ${currentHabitat.size - totalAnimals - needSize} total: ${currentHabitat.size})`)
-        })
-
-        if (result.recintosViaveis.length === 0) {
-            return {erro : 'Não há recinto viável'}
-        }
-
-        return result
+            return true;
+        });
     }
 
     #isMonkey(animal) {
